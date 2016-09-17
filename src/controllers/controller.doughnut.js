@@ -109,11 +109,11 @@ module.exports = function(Chart) {
 						// show value on first line of multiline label
 						// need to clone because we are changing the value
 						dataLabel = dataLabel.slice();
-						dataLabel[0] += value; 
+						dataLabel[0] += value;
 					} else {
 						dataLabel += value;
 					}
-					
+
 					return dataLabel;
 				}
 			}
