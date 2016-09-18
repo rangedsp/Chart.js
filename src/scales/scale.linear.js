@@ -25,8 +25,10 @@ module.exports = function(Chart) {
 			}
 
 			// First Calculate the range
-			me.min = null;
-			me.max = null;
+			var dataRange = me.dataRange = {
+				min: null,
+				max: null
+			};
 
 			if (opts.stacked) {
 				var valuesPerType = {};
@@ -69,8 +71,8 @@ module.exports = function(Chart) {
 					var values = valuesForType.positiveValues.concat(valuesForType.negativeValues);
 					var minVal = helpers.min(values);
 					var maxVal = helpers.max(values);
-					me.min = me.min === null ? minVal : Math.min(me.min, minVal);
-					me.max = me.max === null ? maxVal : Math.max(me.max, maxVal);
+					dataRange.min = dataRange.min === null ? minVal : Math.min(dataRange.min, minVal);
+					dataRange.max = dataRange.max === null ? maxVal : Math.max(dataRange.max, maxVal);
 				});
 
 			} else {
@@ -83,16 +85,16 @@ module.exports = function(Chart) {
 								return;
 							}
 
-							if (me.min === null) {
-								me.min = value;
-							} else if (value < me.min) {
-								me.min = value;
+							if (dataRange.min === null) {
+								dataRange.min = value;
+							} else if (value < dataRange.min) {
+								dataRange.min = value;
 							}
 
-							if (me.max === null) {
-								me.max = value;
-							} else if (value > me.max) {
-								me.max = value;
+							if (dataRange.max === null) {
+								dataRange.max = value;
+							} else if (value > dataRange.max) {
+								dataRange.max = value;
 							}
 						});
 					}

@@ -14,6 +14,28 @@ module.exports = function(Chart) {
 	};
 
 	var LogarithmicScale = Chart.Scale.extend({
+		constructor: function() {
+			var me = this;
+
+			// Properties for backwards compatibility
+			Object.defineProperty(me, 'min', {
+				get: function() {
+					return me.dataRange ? me.dataRange.min : NaN;
+				}
+			});
+			Object.defineProperty(me, 'minNotZero', {
+				get: function() {
+					return me.dataRange ? me.dataRange.minNotZero : NaN;
+				}
+			});
+			Object.defineProperty(me, 'max', {
+				get: function() {
+					return me.dataRange ? me.dataRange.max : NaN;
+				}
+			});
+
+			return Chart.Scale.apply(me, arguments);
+		},
 		determineDataLimits: function() {
 			var me = this;
 			var opts = me.options;
@@ -28,9 +50,11 @@ module.exports = function(Chart) {
 			}
 
 			// Calculate Range
-			me.min = null;
-			me.max = null;
-			me.minNotZero = null;
+			var dataRange = me.dataRange = {
+				min: null,
+				max: null,
+				minNotZero: null
+			};
 
 			if (opts.stacked) {
 				var valuesPerType = {};
@@ -64,8 +88,8 @@ module.exports = function(Chart) {
 				helpers.each(valuesPerType, function(valuesForType) {
 					var minVal = helpers.min(valuesForType);
 					var maxVal = helpers.max(valuesForType);
-					me.min = me.min === null ? minVal : Math.min(me.min, minVal);
-					me.max = me.max === null ? maxVal : Math.max(me.max, maxVal);
+					dataRange.min = dataRange.min === null ? minVal : Math.min(dataRange.min, minVal);
+					dataRange.max = dataRange.max === null ? maxVal : Math.max(dataRange.max, maxVal);
 				});
 
 			} else {
@@ -78,36 +102,36 @@ module.exports = function(Chart) {
 								return;
 							}
 
-							if (me.min === null) {
-								me.min = value;
-							} else if (value < me.min) {
-								me.min = value;
+							if (dataRange.min === null) {
+								dataRange.min = value;
+							} else if (value < dataRange.min) {
+								dataRange.min = value;
 							}
 
-							if (me.max === null) {
-								me.max = value;
-							} else if (value > me.max) {
-								me.max = value;
+							if (dataRange.max === null) {
+								dataRange.max = value;
+							} else if (value > dataRange.max) {
+								dataRange.max = value;
 							}
 
-							if (value !== 0 && (me.minNotZero === null || value < me.minNotZero)) {
-								me.minNotZero = value;
+							if (value !== 0 && (dataRange.minNotZero === null || value < dataRange.minNotZero)) {
+								dataRange.minNotZero = value;
 							}
 						});
 					}
 				});
 			}
 
-			me.min = getValueOrDefault(tickOpts.min, me.min);
-			me.max = getValueOrDefault(tickOpts.max, me.max);
+			dataRange.min = getValueOrDefault(tickOpts.min, dataRange.min);
+			dataRange.max = getValueOrDefault(tickOpts.max, dataRange.max);
 
-			if (me.min === me.max) {
-				if (me.min !== 0 && me.min !== null) {
-					me.min = Math.pow(10, Math.floor(helpers.log10(me.min)) - 1);
-					me.max = Math.pow(10, Math.floor(helpers.log10(me.max)) + 1);
+			if (dataRange.min === dataRange.max) {
+				if (dataRange.min !== 0 && dataRange.min !== null) {
+					dataRange.min = Math.pow(10, Math.floor(helpers.log10(dataRange.min)) - 1);
+					dataRange.max = Math.pow(10, Math.floor(helpers.log10(dataRange.max)) + 1);
 				} else {
-					me.min = 1;
-					me.max = 10;
+					dataRange.min = 1;
+					dataRange.max = 10;
 				}
 			}
 		},
@@ -115,43 +139,13 @@ module.exports = function(Chart) {
 			var me = this;
 			var opts = me.options;
 			var tickOpts = opts.ticks;
-			var getValueOrDefault = helpers.getValueOrDefault;
+			var dataRange = me.dataRange;
 
-			// Reset the ticks array. Later on, we will draw a grid line at these positions
-			// The array simply contains the numerical value of the spots where ticks will be
-			var ticks = me.ticks = [];
-
-			// Figure out what the max number of ticks we can support it is based on the size of
-			// the axis area. For now, we say that the minimum tick spacing in pixels must be 50
-			// We also limit the maximum number of ticks to 11 which gives a nice 10 squares on
-			// the graph
-
-			var tickVal = getValueOrDefault(tickOpts.min, Math.pow(10, Math.floor(helpers.log10(me.min))));
-
-			while (tickVal < me.max) {
-				ticks.push(tickVal);
-
-				var exp;
-				var significand;
-
-				if (tickVal === 0) {
-					exp = Math.floor(helpers.log10(me.minNotZero));
-					significand = Math.round(me.minNotZero / Math.pow(10, exp));
-				} else {
-					exp = Math.floor(helpers.log10(tickVal));
-					significand = Math.floor(tickVal / Math.pow(10, exp)) + 1;
-				}
-
-				if (significand === 10) {
-					significand = 1;
-					++exp;
-				}
-
-				tickVal = significand * Math.pow(10, exp);
-			}
-
-			var lastTick = getValueOrDefault(tickOpts.max, tickVal);
-			ticks.push(lastTick);
+			var generationOptions = {
+				min: tickOpts.min,
+				max: tickOpts.max
+			};
+			var ticks = me.ticks = Chart.Ticks.generators.logarithmic(generationOptions, dataRange);
 
 			if (!me.isHorizontal()) {
 				// We are in a vertical orientation. The top value is the highest. So reverse the array
@@ -160,17 +154,17 @@ module.exports = function(Chart) {
 
 			// At this point, we need to update our max and min given the tick values since we have expanded the
 			// range of the scale
-			me.max = helpers.max(ticks);
-			me.min = helpers.min(ticks);
+			dataRange.min = helpers.min(ticks);
+			dataRange.max = helpers.max(ticks);
 
 			if (tickOpts.reverse) {
 				ticks.reverse();
 
-				me.start = me.max;
-				me.end = me.min;
+				me.start = dataRange.max;
+				me.end = dataRange.min;
 			} else {
-				me.start = me.min;
-				me.end = me.max;
+				me.start = dataRange.min;
+				me.end = dataRange.max;
 			}
 		},
 		convertTicksToLabels: function() {
@@ -198,6 +192,7 @@ module.exports = function(Chart) {
 			var paddingLeft = me.paddingLeft;
 			var opts = me.options;
 			var tickOpts = opts.ticks;
+			var dataRange = me.dataRange;
 
 			if (me.isHorizontal()) {
 				range = helpers.log10(me.end) - helpers.log10(start); // todo: if start === 0
@@ -212,22 +207,22 @@ module.exports = function(Chart) {
 				// Bottom - top since pixels increase downard on a screen
 				innerDimension = me.height - (paddingTop + paddingBottom);
 				if (start === 0 && !tickOpts.reverse) {
-					range = helpers.log10(me.end) - helpers.log10(me.minNotZero);
+					range = helpers.log10(me.end) - helpers.log10(dataRange.minNotZero);
 					if (newVal === start) {
 						pixel = me.bottom - paddingBottom;
-					} else if (newVal === me.minNotZero) {
+					} else if (newVal === dataRange.minNotZero) {
 						pixel = me.bottom - paddingBottom - innerDimension * 0.02;
 					} else {
-						pixel = me.bottom - paddingBottom - innerDimension * 0.02 - (innerDimension * 0.98/ range * (helpers.log10(newVal)-helpers.log10(me.minNotZero)));
+						pixel = me.bottom - paddingBottom - innerDimension * 0.02 - (innerDimension * 0.98/ range * (helpers.log10(newVal)-helpers.log10(dataRange.minNotZero)));
 					}
 				} else if (me.end === 0 && tickOpts.reverse) {
-					range = helpers.log10(me.start) - helpers.log10(me.minNotZero);
+					range = helpers.log10(me.start) - helpers.log10(dataRange.minNotZero);
 					if (newVal === me.end) {
 						pixel = me.top + paddingTop;
-					} else if (newVal === me.minNotZero) {
+					} else if (newVal === dataRange.minNotZero) {
 						pixel = me.top + paddingTop + innerDimension * 0.02;
 					} else {
-						pixel = me.top + paddingTop + innerDimension * 0.02 + (innerDimension * 0.98/ range * (helpers.log10(newVal)-helpers.log10(me.minNotZero)));
+						pixel = me.top + paddingTop + innerDimension * 0.02 + (innerDimension * 0.98/ range * (helpers.log10(newVal)-helpers.log10(dataRange.minNotZero)));
 					}
 				} else {
 					range = helpers.log10(me.end) - helpers.log10(start);

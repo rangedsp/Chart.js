@@ -68,9 +68,10 @@ module.exports = function(Chart) {
 		determineDataLimits: function() {
 			var me = this;
 			var chart = me.chart;
-			me.min = null;
-			me.max = null;
-
+			var dataRange = me.dataRange = {
+				min: null,
+				max: null
+			};
 
 			helpers.each(chart.data.datasets, function(dataset, datasetIndex) {
 				if (chart.isDatasetVisible(datasetIndex)) {
@@ -82,16 +83,16 @@ module.exports = function(Chart) {
 							return;
 						}
 
-						if (me.min === null) {
-							me.min = value;
-						} else if (value < me.min) {
-							me.min = value;
+						if (dataRange.min === null) {
+							dataRange.min = value;
+						} else if (value < dataRange.min) {
+							dataRange.min = value;
 						}
 
-						if (me.max === null) {
-							me.max = value;
-						} else if (value > me.max) {
-							me.max = value;
+						if (dataRange.max === null) {
+							dataRange.max = value;
+						} else if (value > dataRange.max) {
+							dataRange.max = value;
 						}
 					});
 				}
@@ -249,9 +250,10 @@ module.exports = function(Chart) {
 			}
 
 			// Take into account half font size + the yPadding of the top value
-			var scalingFactor = me.drawingArea / (me.max - me.min);
+			var dataRange = me.dataRange;
+			var scalingFactor = me.drawingArea / (dataRange.max - dataRange.min);
 			if (me.options.reverse) {
-				return (me.max - value) * scalingFactor;
+				return (dataRange.max - value) * scalingFactor;
 			}
 			return (value - me.min) * scalingFactor;
 		},
@@ -269,8 +271,8 @@ module.exports = function(Chart) {
 
 		getBasePosition: function() {
 			var me = this;
-			var min = me.min;
-			var max = me.max;
+			var min = me.dataRange.min;
+			var max = me.dataRange.max;
 
 			return me.getPointPositionForValue(0,
 				me.beginAtZero? 0:
@@ -357,7 +359,7 @@ module.exports = function(Chart) {
 					ctx.lineWidth = angleLineOpts.lineWidth;
 					ctx.strokeStyle = angleLineOpts.color;
 
-					var outerDistance = me.getDistanceFromCenterForValue(opts.reverse ? me.min : me.max);
+					var outerDistance = me.getDistanceFromCenterForValue(opts.reverse ? me.dataRange.min : me.dataRange.max);
 
 					// Point Label Font
 					var pointLabelFontSize = getValueOrDefault(pointLabelOpts.fontSize, globalDefaults.defaultFontSize);
