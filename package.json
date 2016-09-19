@@ -4,7 +4,7 @@
   "description": "Simple HTML5 charts using the canvas element.",
   "version": "2.3.0-rc.1",
   "license": "MIT",
-  "main": "src/chart.js",
+  "main": "dist/Chart.bundle.min.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/chartjs/Chart.js.git"
